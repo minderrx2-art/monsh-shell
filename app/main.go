@@ -1,18 +1,28 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
+	"os"
+	"strings"
 )
 
 func main() {
 	for {
-		var command string
+		reader := bufio.NewReader(os.Stdout)
 		// TODO: Uncomment the code below to pass the first stage
 		fmt.Print("$ ")
-		fmt.Scan(&command)
+		line, _ := reader.ReadString('\n')
+		line = strings.TrimSpace(line)
+
+		command, rest := strings.Split(line, " ")[0], strings.Split(line, " ")[1:]
 		if command == "exit" {
 			return
 		}
-		fmt.Printf("%s: command not found\n", command)
+		if command == "echo" {
+			fmt.Printf("%s\n", rest)
+		} else {
+			fmt.Printf("%s: command not found\n", command)
+		}
 	}
 }
