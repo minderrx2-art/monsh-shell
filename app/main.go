@@ -13,14 +13,13 @@ func main() {
 		// TODO: Uncomment the code below to pass the first stage
 		fmt.Print("$ ")
 		line, _ := reader.ReadString('\n')
-		line = strings.TrimSpace(line)
-
-		command, rest := strings.Split(line, " ")[0], strings.Split(line, " ")[1:]
+		lines := strings.Split(strings.TrimSpace(line), " ")
+		command, rest := lines[0], lines[1:]
 		if command == "exit" {
 			return
 		}
 		if command == "echo" {
-			fmt.Printf("%s\n", rest)
+			fmt.Printf("%s\n", strings.Join(rest, " "))
 		} else {
 			fmt.Printf("%s: command not found\n", command)
 		}
