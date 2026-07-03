@@ -39,11 +39,6 @@ func main() {
 				fmt.Printf("%s: not found\n", second_command)
 
 			}
-			// } else if stats, err := os.Stat(command); err == nil {
-			// 	mode := stats.Mode()
-			// 	if mode&0111 != 0 {
-			// 		runExecutable(command, rest...)
-			// 	}
 		} else if exists, _, err := findPath(command); exists == true && err == nil {
 			runExecutable(command, rest...)
 
