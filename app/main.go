@@ -16,7 +16,10 @@ func main() {
 		fmt.Print("$ ")
 		line, _ := reader.ReadString('\n')
 		lines := strings.Split(strings.TrimSpace(line), " ")
-		command, second_command, rest := lines[0], lines[1], lines[1:]
+		command, second_command, rest := lines[0], "", []string{}
+		if len(lines) > 1 {
+			second_command, rest = lines[1], lines[1:]
+		}
 
 		if command == "exit" {
 			return
