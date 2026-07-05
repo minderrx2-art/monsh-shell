@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/minderrx2-art/monsh/internal/builtin"
@@ -29,13 +30,16 @@ func Start() error {
 			rest []string
 		)
 		if len(words) > 1 {
-			rest = words[1:]
+			rest = slices.DeleteFunc(words[1:], func(word string) bool {
+				return word == ""
+			})
 		}
 
-		routedFunc := router(command, rest)
+		builtinFunc := builtinRouter(command, rest)
 
-		if routedFunc != nil {
-			routedFunc()
+		// Check for builtins
+		if builtinFunc != nil {
+			builtinFunc()
 			continue
 		}
 
@@ -47,7 +51,7 @@ func Start() error {
 	}
 }
 
-func router(command string, rest []string) func() {
+func builtinRouter(command string, rest []string) func() {
 	switch command {
 	case "type":
 		return func() { builtin.Type(rest[0]) }
@@ -55,6 +59,8 @@ func router(command string, rest []string) func() {
 		return func() { builtin.Echo(rest) }
 	case "exit":
 		return func() { builtin.Exit() }
+	case "pwd":
+		return func() { builtin.Pwd() }
 	default:
 		return nil
 	}
