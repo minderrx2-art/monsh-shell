@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"fmt"
 	"strings"
 )
 
@@ -81,11 +80,10 @@ func Tokenize(input string) []Token {
 }
 
 // Convert tokens to strings
-// [{1 foo} {1 bar} {0 }] to ["foo", "bar", ""]
+// [{1 foo}, {1 bar}, {0 }] to ["foo", "bar", ""]
 func Words(input []Token) []string {
 	words := make([]string, len(input))
 	for i, token := range input {
-		fmt.Println(i, token)
 		words[i] = token.Value
 	}
 	return words
