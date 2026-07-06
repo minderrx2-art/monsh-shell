@@ -67,7 +67,7 @@ func Tokenize(input string) []Token {
 				// Closing double quote; return to normal parsing.
 				state = stateNormal
 			} else if r == '\\' {
-				// if not the last character
+				// When not out of bounds
 				if i+1 < len(input) {
 					next := input[i+1]
 					switch next {
