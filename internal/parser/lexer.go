@@ -68,7 +68,12 @@ func Tokenize(input string) []Token {
 			} else {
 				curr.WriteRune(r)
 			}
+
+		case stateEscape:
+			curr.WriteRune(r)
+			state = stateNormal
 		}
+
 	}
 
 	// Final flush of builder buffer
