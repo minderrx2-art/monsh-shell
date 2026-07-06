@@ -32,7 +32,8 @@ func Tokenize(input string) []Token {
 	}
 
 	// Walk through the input one rune at a time.
-	for _, r := range input {
+	for i := 0; i < len(input); i++ {
+		r := rune(input[i])
 		switch state {
 		case stateNormal:
 			switch r {
@@ -65,6 +66,21 @@ func Tokenize(input string) []Token {
 			if r == '"' {
 				// Closing double quote; return to normal parsing.
 				state = stateNormal
+			} else if r == '\\' {
+				// if not the last character
+				if i+1 < len(input) {
+					next := input[i+1]
+					switch next {
+					case '\\', '"', '$', '`', '\n':
+						curr.WriteByte(next)
+						i++
+					default:
+						curr.WriteRune('\\')
+					}
+
+				} else {
+					curr.WriteByte('\\')
+				}
 			} else {
 				curr.WriteRune(r)
 			}
