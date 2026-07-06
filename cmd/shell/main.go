@@ -7,6 +7,6 @@ import (
 func main() {
 	err := shell.Start()
 	if err != nil {
-		// Do something
+		// Do
 	}
 }
