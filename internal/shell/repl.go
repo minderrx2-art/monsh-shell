@@ -61,6 +61,8 @@ func builtinRouter(command string, rest []string) func() {
 		return func() { builtin.Exit() }
 	case "pwd":
 		return func() { builtin.Pwd() }
+	case "cd":
+		return func() { builtin.Cd(rest[0]) }
 	default:
 		return nil
 	}
