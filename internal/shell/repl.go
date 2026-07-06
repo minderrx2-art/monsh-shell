@@ -62,7 +62,12 @@ func builtinRouter(command string, rest []string) func() {
 	case "pwd":
 		return func() { builtin.Pwd() }
 	case "cd":
-		return func() { builtin.Cd(rest[0]) }
+		return func() {
+			err := builtin.Cd(rest[0])
+			if err != nil {
+				fmt.Println(err)
+			}
+		}
 	default:
 		return nil
 	}
