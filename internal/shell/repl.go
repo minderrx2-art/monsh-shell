@@ -2,9 +2,9 @@ package shell
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
-	"slices"
 	"strings"
 
 	"github.com/minderrx2-art/monsh/internal/builtin"
@@ -20,22 +20,16 @@ func Start() error {
 		line, _ := reader.ReadString('\n')
 
 		tokens := parser.Tokenize(strings.TrimSpace(line))
-		words := parser.Words(tokens)
-
-		if len(words) == 0 {
+		cmd, err := parser.Parse(tokens)
+		if err != nil {
+			if errors.Is(err, parser.ErrEmptyInput) {
+				continue
+			}
+			fmt.Println(err)
 			continue
 		}
-		command := words[0]
-		var (
-			rest []string
-		)
-		if len(words) > 1 {
-			rest = slices.DeleteFunc(words[1:], func(word string) bool {
-				return word == ""
-			})
-		}
 
-		builtinFunc := builtinRouter(command, rest)
+		builtinFunc := builtinRouter(cmd.Name, cmd.Args)
 
 		// Check for builtins
 		if builtinFunc != nil {
@@ -43,10 +37,10 @@ func Start() error {
 			continue
 		}
 
-		if exists, _, err := path.Find(command); exists == true && err == nil {
-			runner.Execute(command, rest...)
+		if exists, _, err := path.Find(cmd.Name); exists == true && err == nil {
+			runner.Execute(cmd.Name, cmd.Args...)
 		} else {
-			fmt.Printf("%s: command not found\n", command)
+			fmt.Printf("%s: command not found\n", cmd.Name)
 		}
 	}
 }
