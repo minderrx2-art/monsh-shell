@@ -55,50 +55,26 @@ func Tokenize(input string) []Token {
 			}
 
 		case stateSingleQuote:
-			if r == '\'' {
-				// Closing single quote; return to normal parsing.
+			switch r {
+			// Closing single quote; return to normal parsing.
+			case '\'':
 				state = stateNormal
-			} else if r == '\\' {
-				// When not out of bounds
-				if i+1 < len(input) {
-					next := input[i+1]
-					switch next {
-					case '\\', '"', '$', '`', '\n':
-						curr.WriteByte(next)
-						i++
-					default:
-						curr.WriteRune('\\')
-					}
-				} else {
-					curr.WriteByte('\\')
-				}
-			} else {
+			case '\\':
+				i += handleEscapeCharacter(i, input, &curr)
+			default:
 				curr.WriteRune(r)
 			}
 
 		case stateDoubleQuote:
-			if r == '"' {
-				// Closing double quote; return to normal parsing.
+			switch r {
+			// Closing double quote; return to normal parsing.
+			case '"':
 				state = stateNormal
-			} else if r == '\\' {
-				// When not out of bounds
-				if i+1 < len(input) {
-					next := input[i+1]
-					switch next {
-					case '\\', '"', '$', '`', '\n':
-						curr.WriteByte(next)
-						i++
-					default:
-						curr.WriteRune('\\')
-					}
-
-				} else {
-					curr.WriteByte('\\')
-				}
-			} else {
+			case '\\':
+				i += handleEscapeCharacter(i, input, &curr)
+			default:
 				curr.WriteRune(r)
 			}
-
 		case stateEscape:
 			curr.WriteRune(r)
 			state = stateNormal
@@ -112,4 +88,25 @@ func Tokenize(input string) []Token {
 	// Append EOF mark
 	tokens = append(tokens, Token{Type: TokenEOF})
 	return tokens
+}
+
+func handleEscapeCharacter(index int, input string, curr *strings.Builder) int {
+	// When not out of bounds
+	if index+1 < len(input) {
+		next := input[index+1]
+		switch next {
+		// when next character can be escaped
+		case '\\', '"', '$', '`', '\n':
+			// write it and skip over a character (since its written)
+			curr.WriteByte(next)
+			return index + 1
+		default:
+			// when it can't be escaped just write a \
+			curr.WriteRune('\\')
+		}
+
+	} else {
+		curr.WriteByte('\\')
+	}
+	return index
 }
