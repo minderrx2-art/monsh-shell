@@ -35,6 +35,7 @@ func Tokenize(input string) []Token {
 	for i := 0; i < len(input); i++ {
 		r := rune(input[i])
 		switch state {
+
 		case stateNormal:
 			switch r {
 			case ' ', '\t':
@@ -59,8 +60,6 @@ func Tokenize(input string) []Token {
 			// Closing single quote; return to normal parsing.
 			case '\'':
 				state = stateNormal
-			case '\\':
-				i += handleEscapeCharacter(i, input, &curr)
 			default:
 				curr.WriteRune(r)
 			}
@@ -71,15 +70,15 @@ func Tokenize(input string) []Token {
 			case '"':
 				state = stateNormal
 			case '\\':
-				i += handleEscapeCharacter(i, input, &curr)
+				i = handleEscapeCharacter(i, input, &curr)
 			default:
 				curr.WriteRune(r)
 			}
+
 		case stateEscape:
 			curr.WriteRune(r)
 			state = stateNormal
 		}
-
 	}
 
 	// Final flush of builder buffer
