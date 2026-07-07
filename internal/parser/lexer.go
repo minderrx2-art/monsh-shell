@@ -58,6 +58,20 @@ func Tokenize(input string) []Token {
 			if r == '\'' {
 				// Closing single quote; return to normal parsing.
 				state = stateNormal
+			} else if r == '\\' {
+				// When not out of bounds
+				if i+1 < len(input) {
+					next := input[i+1]
+					switch next {
+					case '\\', '"', '$', '`', '\n':
+						curr.WriteByte(next)
+						i++
+					default:
+						curr.WriteRune('\\')
+					}
+				} else {
+					curr.WriteByte('\\')
+				}
 			} else {
 				curr.WriteRune(r)
 			}
@@ -98,14 +112,4 @@ func Tokenize(input string) []Token {
 	// Append EOF mark
 	tokens = append(tokens, Token{Type: TokenEOF})
 	return tokens
-}
-
-// Convert tokens to strings
-// [{1 foo}, {1 bar}, {0 }] to ["foo", "bar", ""]
-func Words(input []Token) []string {
-	words := make([]string, len(input))
-	for i, token := range input {
-		words[i] = token.Value
-	}
-	return words
 }
