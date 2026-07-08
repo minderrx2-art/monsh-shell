@@ -5,6 +5,7 @@ type TokenType int
 const (
 	TokenEOF TokenType = iota
 	TokenWord
+	TokenOperation
 )
 
 type Token struct {
