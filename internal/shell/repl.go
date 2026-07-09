@@ -2,14 +2,12 @@ package shell
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"os"
 	"strings"
 
 	"github.com/minderrx2-art/monsh/internal/builtin"
 	"github.com/minderrx2-art/monsh/internal/parser"
-	"github.com/minderrx2-art/monsh/internal/path"
 	"github.com/minderrx2-art/monsh/internal/runner"
 )
 
@@ -20,28 +18,34 @@ func Start() error {
 		line, _ := reader.ReadString('\n')
 
 		tokens := parser.Tokenize(strings.TrimSpace(line))
-		cmd, err := parser.Parse(tokens)
+		cmd, err := parser.ParsePipeline(tokens)
+
+		runner.ExecutePipeline(cmd)
 		if err != nil {
-			if errors.Is(err, parser.ErrEmptyInput) {
-				continue
-			}
 			fmt.Println(err)
 			continue
 		}
+		// if err != nil {
+		// 	if errors.Is(err, parser.ErrEmptyInput) {
+		// 		continue
+		// 	}
+		// 	fmt.Println(err)
+		// 	continue
+		// }
 
-		builtinFunc := builtinRouter(cmd.Name, cmd.Args)
+		// builtinFunc := builtinRouter(cmd.Name, cmd.Args)
 
-		// Check for builtins
-		if builtinFunc != nil {
-			builtinFunc()
-			continue
-		}
+		// // Check for builtins
+		// if builtinFunc != nil {
+		// 	builtinFunc()
+		// 	continue
+		// }
 
-		if exists, _, err := path.Find(cmd.Name); exists == true && err == nil {
-			runner.Execute(cmd.Name, cmd.Args...)
-		} else {
-			fmt.Printf("%s: command not found\n", cmd.Name)
-		}
+		// if exists, _, err := path.Find(cmd.Name); exists == true && err == nil {
+		// 	runner.Execute(cmd.Name, cmd.Args...)
+		// } else {
+		// 	fmt.Printf("%s: command not found\n", cmd.Name)
+		// }
 	}
 }
 
