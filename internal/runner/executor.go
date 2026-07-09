@@ -18,9 +18,7 @@ func Execute(path string, args ...string) error {
 	return nil
 }
 
-// &{
-// [{echo [damn son]},
-// [{1 ngr.txt}]}}
+// &{[{echo [damn son] [{1 test.txt}]}]}
 func ExecutePipeline(pipeline *parser.Pipeline) error {
 	for _, command := range pipeline.Commands {
 		cmd := exec.Command(command.Name, command.Args...)
@@ -38,8 +36,29 @@ func ExecutePipeline(pipeline *parser.Pipeline) error {
 				if err := redirectOut(cmd, redirect.Target); err != nil {
 					return err
 				}
+			case parser.OutErr:
+				if err := redirectOutErr(cmd, redirect.Target); err != nil {
+					return err
+				}
+			case parser.Append:
+				if err := redirectAppend(cmd, redirect.Target); err != nil {
+					return err
+				}
 			}
 		}
+	}
+	return nil
+}
+
+func redirectIn(cmd *exec.Cmd, target string) error {
+	file, err := os.Open(target)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	cmd.Stdin = file
+	if err := cmd.Run(); err != nil {
+		return err
 	}
 	return nil
 }
@@ -57,13 +76,29 @@ func redirectOut(cmd *exec.Cmd, target string) error {
 	return nil
 }
 
-func redirectIn(cmd *exec.Cmd, target string) error {
-	file, err := os.Open(target)
+func redirectOutErr(cmd *exec.Cmd, target string) error {
+	file, err := os.Create(target)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
-	cmd.Stdin = file
+	cmd.Stderr = file
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func redirectAppend(cmd *exec.Cmd, target string) error {
+	file, err := os.OpenFile(
+		target,
+		os.O_CREATE|os.O_WRONLY|os.O_APPEND,
+		0644,
+	)
+	if err != nil {
+		return err
+	}
+	cmd.Stdout = file
 	if err := cmd.Run(); err != nil {
 		return err
 	}

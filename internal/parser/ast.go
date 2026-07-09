@@ -4,7 +4,8 @@ type RedirectType int
 
 const (
 	In     RedirectType = iota // <
-	Out                        // >
+	Out                        // 1> >
+	OutErr                     // 2>
 	Append                     // >>
 )
 

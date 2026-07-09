@@ -18,9 +18,13 @@ func Start() error {
 		line, _ := reader.ReadString('\n')
 
 		tokens := parser.Tokenize(strings.TrimSpace(line))
-		cmd, err := parser.ParsePipeline(tokens)
 
-		runner.ExecutePipeline(cmd)
+		cmdPipeline, err := parser.ParsePipeline(tokens)
+
+		if err != nil {
+			fmt.Println(err)
+		}
+		runner.ExecutePipeline(cmdPipeline)
 		if err != nil {
 			fmt.Println(err)
 			continue
