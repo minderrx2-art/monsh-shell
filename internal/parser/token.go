@@ -5,10 +5,11 @@ type TokenType int
 const (
 	TokenEOF TokenType = iota
 	TokenWord
-	TokenRedirectOut      // > 1>
-	TokenRedirectOutError // 2>
-	TokenRedirectAppend   // >>
-	TokenRedirectIn       // < 0<
+	TokenRedirectOut         // > 1>
+	TokenRedirectOutError    // 2>
+	TokenRedirectAppend      // >>
+	TokenRedirectAppendError // 2>>
+	TokenRedirectIn          // < 0<
 	TokenPipe
 )
 

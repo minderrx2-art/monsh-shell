@@ -44,6 +44,10 @@ func ExecutePipeline(pipeline *parser.Pipeline) error {
 				if err := redirectAppend(cmd, redirect.Target); err != nil {
 					return err
 				}
+			case parser.AppendErr:
+				if err := redirectAppendErr(cmd, redirect.Target); err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -100,6 +104,23 @@ func redirectAppend(cmd *exec.Cmd, target string) error {
 	}
 	defer file.Close()
 	cmd.Stdout = file
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func redirectAppendErr(cmd *exec.Cmd, target string) error {
+	file, err := os.OpenFile(
+		target,
+		os.O_CREATE|os.O_WRONLY|os.O_APPEND,
+		0644,
+	)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	cmd.Stderr = file
 	if err := cmd.Run(); err != nil {
 		return err
 	}

@@ -40,10 +40,14 @@ func Tokenize(input string) []Token {
 			case "1>>":
 				tokens = append(tokens, Token{Type: TokenRedirectAppend, Value: chars})
 				curr.Reset()
+			case "2>>":
+				tokens = append(tokens, Token{Type: TokenRedirectAppendError, Value: chars})
+				curr.Reset()
 			case "<", "0<":
 				tokens = append(tokens, Token{Type: TokenRedirectIn, Value: chars})
 				curr.Reset()
 			case " ", "":
+				// Dont make a word for space
 				curr.Reset()
 			default:
 				tokens = append(tokens, Token{Type: TokenWord, Value: chars})

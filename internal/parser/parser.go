@@ -85,6 +85,8 @@ func parseSimpleCommand(tokens []Token, i *int) (Command, error) {
 			cmd.Redirects = append(cmd.Redirects, Redirect{Type: OutErr, Target: target})
 		case ">>", "1>>":
 			cmd.Redirects = append(cmd.Redirects, Redirect{Type: Append, Target: target})
+		case "2>>":
+			cmd.Redirects = append(cmd.Redirects, Redirect{Type: AppendErr, Target: target})
 		case "<", "0<":
 			cmd.Redirects = append(cmd.Redirects, Redirect{Type: In, Target: target})
 		}
