@@ -2,7 +2,6 @@ package parser
 
 import (
 	"errors"
-	"fmt"
 	"slices"
 )
 
@@ -89,7 +88,6 @@ func parseSimpleCommand(tokens []Token, i *int) (Command, error) {
 		case "<", "0<":
 			cmd.Redirects = append(cmd.Redirects, Redirect{Type: In, Target: target})
 		}
-		fmt.Println(cmd)
 	}
 
 	return cmd, nil
