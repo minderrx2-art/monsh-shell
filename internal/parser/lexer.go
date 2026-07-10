@@ -25,11 +25,23 @@ func Tokenize(input string) []Token {
 
 	// Write out the word currently in buffer
 	flushWord := func() {
-		if curr.Len() == 1 {
-			char := curr.String()[0]
-			switch char {
-			case '>', '<', '|':
-				tokens = append(tokens, Token{Type: TokenOperation, Value: string(char)})
+		if curr.Len() == 2 || curr.Len() == 1 {
+			chars := curr.String()
+			switch chars {
+			case ">", "1>":
+				tokens = append(tokens, Token{Type: TokenRedirectOut, Value: chars})
+				curr.Reset()
+			case "2>":
+				tokens = append(tokens, Token{Type: TokenRedirectOutError, Value: chars})
+				curr.Reset()
+			case ">>":
+				tokens = append(tokens, Token{Type: TokenRedirectAppend, Value: chars})
+				curr.Reset()
+			case "<", "0<":
+				tokens = append(tokens, Token{Type: TokenRedirectIn, Value: chars})
+				curr.Reset()
+			default:
+				tokens = append(tokens, Token{Type: TokenWord, Value: chars})
 				curr.Reset()
 			}
 		} else if curr.Len() > 0 {

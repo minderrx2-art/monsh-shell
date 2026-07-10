@@ -15,7 +15,7 @@ func Parse(tokens []Token) (*Command, error) {
 			break
 		}
 		// Todo
-		if token.Type == TokenOperation {
+		if token.Type == TokenPipe {
 			words = append(words, token.Value)
 		}
 		if token.Type == TokenWord {
@@ -41,40 +41,51 @@ func Parse(tokens []Token) (*Command, error) {
 	}, nil
 }
 
-// [{1 echo} {1 damn son} {2 >} {1 text.txt} {0 }]
+/*
+[{1 echo} {1 damn son} {2 >} {1 test.txt} {0 }]
+$ echo "damn son" 1> test.txt
+[{1 echo} {1 damn son} {2 1>} {1 test.txt} {0 }]
+$ echo "damn son" 2> test.txt
+[{1 echo} {1 damn son} {3 2>} {1 test.txt} {0 }]
+$ echo "damn son" 0< test.txt
+[{1 echo} {1 damn son} {5 0<} {1 test.txt} {0 }]
+$ echo "damn son" < test.txt
+[{1 echo} {1 damn son} {5 <} {1 test.txt} {0 }]
+*/
 func parseSimpleCommand(tokens []Token, i *int) (Command, error) {
 	cmd := Command{}
 
-	// first word = command name
+	// First word = command name
 	cmd.Name = tokens[*i].Value
 	*i++
 
-	// read words until operator or EOF
+	// Read words until operator or EOF
 	// [{1 damn son} |stop| {2 >} {1 text.txt} {0 }]
 	for *i < len(tokens) && tokens[*i].Type == TokenWord {
 		cmd.Args = append(cmd.Args, tokens[*i].Value)
 		*i++
 	}
 
-	// read redirects attached to this command
-	for *i < len(tokens) && tokens[*i].Type == TokenOperation {
+	// Read redirects attached to this command
+	for *i < len(tokens) && tokens[*i].Type != TokenEOF {
 		op := tokens[*i].Value
 		*i++
-
-		// if nothing is on the right, or the last value is not a TokenWord
+		// If nothing is on the right, or the last value is not a TokenWord
 		if *i >= len(tokens) || tokens[*i].Type != TokenWord {
 			return cmd, errors.New("expected filename after redirect")
 		}
-		// set value after op as target
+		// Set value after op as target
 		target := tokens[*i].Value
 		*i++
 
 		switch op {
-		case ">":
+		case ">", "1>":
 			cmd.Redirects = append(cmd.Redirects, Redirect{Type: Out, Target: target})
+		case "2>":
+			cmd.Redirects = append(cmd.Redirects, Redirect{Type: OutErr, Target: target})
 		case ">>":
-			// cmd.Redirects = append(cmd.Redirects, Redirect{Type: RedirectAppend, Target: target})
-		case "<":
+			cmd.Redirects = append(cmd.Redirects, Redirect{Type: Append, Target: target})
+		case "<", "0<":
 			cmd.Redirects = append(cmd.Redirects, Redirect{Type: In, Target: target})
 		}
 	}

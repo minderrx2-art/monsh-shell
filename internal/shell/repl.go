@@ -2,7 +2,6 @@ package shell
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -20,28 +19,42 @@ func Start() error {
 		line, _ := reader.ReadString('\n')
 
 		tokens := parser.Tokenize(strings.TrimSpace(line))
-		cmd, err := parser.Parse(tokens)
+
+		cmdPipeline, err := parser.ParsePipeline(tokens)
+
 		if err != nil {
-			if errors.Is(err, parser.ErrEmptyInput) {
+			fmt.Println(err)
+		}
+
+		if len(cmdPipeline.Commands) == 1 && cmdPipeline.Commands[0].Redirects == nil {
+			cmd := cmdPipeline.Commands[0]
+			builtinFunc := builtinRouter(cmd.Name, cmd.Args)
+
+			// Check for builtins
+			if builtinFunc != nil {
+				builtinFunc()
 				continue
 			}
-			fmt.Println(err)
-			continue
-		}
 
-		builtinFunc := builtinRouter(cmd.Name, cmd.Args)
-
-		// Check for builtins
-		if builtinFunc != nil {
-			builtinFunc()
-			continue
-		}
-
-		if exists, _, err := path.Find(cmd.Name); exists == true && err == nil {
-			runner.Execute(cmd.Name, cmd.Args...)
+			if exists, _, err := path.Find(cmd.Name); exists == true && err == nil {
+				runner.Execute(cmd.Name, cmd.Args...)
+			} else {
+				fmt.Printf("%s: command not found\n", cmd.Name)
+			}
 		} else {
-			fmt.Printf("%s: command not found\n", cmd.Name)
+			runner.ExecutePipeline(cmdPipeline)
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
 		}
+		// if err != nil {
+		// 	if errors.Is(err, parser.ErrEmptyInput) {
+		// 		continue
+		// 	}
+		// 	fmt.Println(err)
+		// 	continue
+		// }
 	}
 }
 

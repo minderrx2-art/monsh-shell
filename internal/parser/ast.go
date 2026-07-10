@@ -3,9 +3,10 @@ package parser
 type RedirectType int
 
 const (
-	In RedirectType = iota
-	Out
-	Append
+	In     RedirectType = iota // <
+	Out                        // 1> >
+	OutErr                     // 2>
+	Append                     // >>
 )
 
 type Command struct {
