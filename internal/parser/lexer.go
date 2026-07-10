@@ -40,6 +40,9 @@ func Tokenize(input string) []Token {
 			case "<", "0<":
 				tokens = append(tokens, Token{Type: TokenRedirectIn, Value: chars})
 				curr.Reset()
+			default:
+				tokens = append(tokens, Token{Type: TokenWord, Value: chars})
+				curr.Reset()
 			}
 		} else if curr.Len() > 0 {
 			tokens = append(tokens, Token{Type: TokenWord, Value: curr.String()})
