@@ -98,6 +98,7 @@ func redirectAppend(cmd *exec.Cmd, target string) error {
 	if err != nil {
 		return err
 	}
+	defer file.Close()
 	cmd.Stdout = file
 	if err := cmd.Run(); err != nil {
 		return err
