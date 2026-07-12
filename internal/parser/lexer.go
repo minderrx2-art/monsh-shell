@@ -5,8 +5,11 @@ import (
 )
 
 type Lexer struct {
-	input string
-	pos   int
+	input  string
+	pos    int
+	state  parseState
+	curr   strings.Builder
+	tokens []Token
 }
 
 type parseState int
@@ -19,121 +22,112 @@ const (
 )
 
 func Tokenize(input string) []Token {
-	var tokens []Token
-	var curr strings.Builder
-	state := stateNormal
-
-	// Write out the word currently in buffer
-	flushWord := func() {
-		if curr.Len() <= 3 {
-			chars := curr.String()
-			switch chars {
-			case ">", "1>":
-				tokens = append(tokens, Token{Type: TokenRedirectOut, Value: chars})
-				curr.Reset()
-			case "2>":
-				tokens = append(tokens, Token{Type: TokenRedirectOutError, Value: chars})
-				curr.Reset()
-			case ">>":
-				tokens = append(tokens, Token{Type: TokenRedirectAppend, Value: chars})
-				curr.Reset()
-			case "1>>":
-				tokens = append(tokens, Token{Type: TokenRedirectAppend, Value: chars})
-				curr.Reset()
-			case "2>>":
-				tokens = append(tokens, Token{Type: TokenRedirectAppendError, Value: chars})
-				curr.Reset()
-			case "<", "0<":
-				tokens = append(tokens, Token{Type: TokenRedirectIn, Value: chars})
-				curr.Reset()
-			case " ", "":
-				// Dont make a word for space
-				curr.Reset()
-			default:
-				tokens = append(tokens, Token{Type: TokenWord, Value: chars})
-				curr.Reset()
-			}
-		} else if curr.Len() > 0 {
-			tokens = append(tokens, Token{Type: TokenWord, Value: curr.String()})
-			curr.Reset()
-		}
+	l := &Lexer{
+		input:  input,
+		state:  stateNormal,
+		tokens: []Token{},
 	}
+	return l.Tokenize()
+}
 
-	// Walk through the input one rune at a time.
-	for i := 0; i < len(input); i++ {
-		r := rune(input[i])
-		switch state {
+func (l *Lexer) Tokenize() []Token {
+	for l.pos = 0; l.pos < len(l.input); l.pos++ {
+		r := rune(l.input[l.pos])
+		switch l.state {
 
 		case stateNormal:
 			switch r {
 			case ' ', '\t':
-				// End of the current word. Emit it as a token and clear the buffer.
-				flushWord()
+				l.flush()
 			case '\'':
-				// Enter single-quoted mode.
-				state = stateSingleQuote
+				l.state = stateSingleQuote
 			case '"':
-				// Enter double-quoted mode.
-				state = stateDoubleQuote
+				l.state = stateDoubleQuote
 			case '\\':
-				// The next rune should be treated as escaped.
-				state = stateEscape
+				l.state = stateEscape
 			default:
-				// Append the rune to the current word.
-				curr.WriteRune(r)
+				l.curr.WriteRune(r)
 			}
 
 		case stateSingleQuote:
 			switch r {
-			// Closing single quote; return to normal parsing.
 			case '\'':
-				state = stateNormal
+				l.state = stateNormal
 			default:
-				curr.WriteRune(r)
+				l.curr.WriteRune(r)
 			}
 
 		case stateDoubleQuote:
 			switch r {
-			// Closing double quote; return to normal parsing.
 			case '"':
-				state = stateNormal
+				l.state = stateNormal
 			case '\\':
-				i = handleEscapeCharacter(i, input, &curr)
+				l.pos = l.handleEscape()
 			default:
-				curr.WriteRune(r)
+				l.curr.WriteRune(r)
 			}
 
 		case stateEscape:
-			curr.WriteRune(r)
-			state = stateNormal
+			l.curr.WriteRune(r)
+			l.state = stateNormal
 		}
 	}
 
-	// Final flush of builder buffer
-	flushWord()
-
-	// Append EOF mark
-	tokens = append(tokens, Token{Type: TokenEOF})
-	return tokens
+	l.flush()
+	l.tokens = append(l.tokens, Token{Type: TokenEOF})
+	return l.tokens
 }
 
-func handleEscapeCharacter(index int, input string, curr *strings.Builder) int {
-	// When not out of bounds
-	if index+1 < len(input) {
-		next := input[index+1]
-		switch next {
-		// when next character can be escaped
-		case '\\', '"', '$', '`', '\n':
-			// write it and skip over a character (since its written)
-			curr.WriteByte(next)
-			return index + 1
-		default:
-			// when it can't be escaped just write a \
-			curr.WriteRune('\\')
-		}
+func (l *Lexer) flush() {
+	if l.curr.Len() <= 3 {
+		chars := l.curr.String()
+		switch chars {
+		case ">", "1>":
+			l.tokens = append(l.tokens, Token{Type: TokenRedirectOut, Value: chars})
+			l.curr.Reset()
+		case "2>":
+			l.tokens = append(l.tokens, Token{Type: TokenRedirectOutError, Value: chars})
+			l.curr.Reset()
+		case ">>":
+			l.tokens = append(l.tokens, Token{Type: TokenRedirectAppend, Value: chars})
+			l.curr.Reset()
+		case "1>>":
+			l.tokens = append(l.tokens, Token{Type: TokenRedirectAppend, Value: chars})
+			l.curr.Reset()
+		case "2>>":
+			l.tokens = append(l.tokens, Token{Type: TokenRedirectAppendError, Value: chars})
+			l.curr.Reset()
+		case "<", "0<":
+			l.tokens = append(l.tokens, Token{Type: TokenRedirectIn, Value: chars})
+			l.curr.Reset()
+		case "|":
+			l.tokens = append(l.tokens, Token{Type: TokenPipe, Value: chars})
+			l.curr.Reset()
 
-	} else {
-		curr.WriteByte('\\')
+		case " ", "":
+			l.curr.Reset()
+		default:
+			l.tokens = append(l.tokens, Token{Type: TokenWord, Value: chars})
+			l.curr.Reset()
+		}
+	} else if l.curr.Len() > 0 {
+		l.tokens = append(l.tokens, Token{Type: TokenWord, Value: l.curr.String()})
+		l.curr.Reset()
 	}
-	return index
+}
+
+func (l *Lexer) handleEscape() int {
+	if l.pos+1 < len(l.input) {
+		next := l.input[l.pos+1]
+		switch next {
+		case '\\', '"', '$', '`', '\n':
+			l.curr.WriteByte(next)
+			return l.pos + 1
+		default:
+			l.curr.WriteRune('\\')
+		}
+	} else {
+		l.curr.WriteByte('\\')
+	}
+	return l.pos
 }
