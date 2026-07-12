@@ -2,6 +2,7 @@ package shell
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -20,10 +21,13 @@ func Start() error {
 
 		tokens := parser.Tokenize(strings.TrimSpace(line))
 
-		cmdPipeline, err := parser.ParsePipeline(tokens)
+		cmdPipeline, err := parser.Parse(tokens)
 
 		if err != nil {
-			fmt.Println(err)
+			if !errors.Is(err, parser.ErrEmptyInput) {
+				fmt.Println(err)
+			}
+			continue
 		}
 
 		if len(cmdPipeline.Commands) == 1 && cmdPipeline.Commands[0].Redirects == nil {
@@ -42,19 +46,10 @@ func Start() error {
 				fmt.Printf("%s: command not found\n", cmd.Name)
 			}
 		} else {
-			runner.ExecutePipeline(cmdPipeline)
-			if err != nil {
+			if err := runner.ExecutePipeline(cmdPipeline); err != nil {
 				fmt.Println(err)
-				continue
 			}
 		}
-		// if err != nil {
-		// 	if errors.Is(err, parser.ErrEmptyInput) {
-		// 		continue
-		// 	}
-		// 	fmt.Println(err)
-		// 	continue
-		// }
 	}
 }
 
