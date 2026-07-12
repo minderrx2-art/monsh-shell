@@ -2,92 +2,81 @@ package parser
 
 import (
 	"errors"
-	"slices"
 )
 
-var ErrEmptyInput = errors.New("empty input")
+var (
+	ErrEmptyInput          = errors.New("empty input")
+	ErrExpectedFilename    = errors.New("expected filename after redirect")
+	ErrUnexpectedToken     = errors.New("unexpected token")
+	ErrExpectedCommandName = errors.New("expected command name")
+)
 
-func Parse(tokens []Token) (*Command, error) {
-	var words []string
+type Parser struct {
+	tokens []Token
+	pos    int
+}
 
-	for _, token := range tokens {
-		if token.Type == TokenEOF {
-			break
-		}
-		// Todo
-		if token.Type == TokenPipe {
-			words = append(words, token.Value)
-		}
-		if token.Type == TokenWord {
-			words = append(words, token.Value)
-		}
-	}
+func Parse(tokens []Token) (*Pipeline, error) {
+	p := &Parser{tokens: tokens}
+	return p.parsePipeline()
+}
 
-	if len(words) == 0 {
+func (p *Parser) parsePipeline() (*Pipeline, error) {
+	if len(p.tokens) == 0 || p.tokens[0].Type == TokenEOF {
 		return nil, ErrEmptyInput
 	}
 
-	args := words[1:]
-	args = slices.DeleteFunc(args, func(arg string) bool {
-		return arg == ""
-	})
+	var commands []Command
+	for {
+		cmd, err := p.parseSimpleCommand()
+		if err != nil {
+			return nil, err
+		}
+		commands = append(commands, cmd)
 
-	return &Command{
-		Name: "echo",
-		Args: []string{"damn son"},
-		Redirects: []Redirect{
-			{Type: In, Target: "text.txt"},
-		},
-	}, nil
-}
-
-/*
-[{1 echo} {1 damn son} {2 >} {1 test.txt} {0 }]
-$ echo "damn son" 1> test.txt
-[{1 echo} {1 damn son} {2 1>} {1 test.txt} {0 }]
-$ echo "damn son" 2> test.txt
-[{1 echo} {1 damn son} {3 2>} {1 test.txt} {0 }]
-$ echo "damn son" 0< test.txt
-[{1 echo} {1 damn son} {5 0<} {1 test.txt} {0 }]
-$ echo "damn son" < test.txt
-[{1 echo} {1 damn son} {5 <} {1 test.txt} {0 }]
-*/
-func parseSimpleCommand(tokens []Token, i *int) (Command, error) {
-	cmd := Command{}
-
-	// First word = command name
-	cmd.Name = tokens[*i].Value
-	*i++
-
-	// Read words until operator or EOF
-	// [{1 damn son} |stop| {2 >} {1 text.txt} {0 }]
-	for *i < len(tokens) && tokens[*i].Type == TokenWord {
-		cmd.Args = append(cmd.Args, tokens[*i].Value)
-		*i++
+		if p.atEOF() {
+			break
+		}
+		if p.peek().Type == TokenPipe {
+			p.advance()
+			continue
+		}
+		return nil, ErrUnexpectedToken
 	}
 
-	// Read redirects attached to this command
-	for *i < len(tokens) && tokens[*i].Type != TokenEOF {
-		op := tokens[*i].Value
-		*i++
-		// If nothing is on the right, or the last value is not a TokenWord
-		if *i >= len(tokens) || tokens[*i].Type != TokenWord {
-			return cmd, errors.New("expected filename after redirect")
-		}
-		// Set value after op as target
-		target := tokens[*i].Value
-		*i++
+	return &Pipeline{Commands: commands}, nil
+}
 
-		switch op {
-		case ">", "1>":
+func (p *Parser) parseSimpleCommand() (Command, error) {
+	cmd := Command{}
+
+	if p.peek().Type != TokenWord {
+		return cmd, ErrExpectedCommandName
+	}
+	cmd.Name = p.advance().Value
+
+	for p.peek().Type == TokenWord {
+		cmd.Args = append(cmd.Args, p.advance().Value)
+	}
+
+	for isRedirect(p.peek()) {
+		redirect := p.advance()
+
+		if p.peek().Type != TokenWord {
+			return cmd, ErrExpectedFilename
+		}
+		target := p.advance().Value
+
+		switch redirect.Type {
+		case TokenRedirectOut:
 			cmd.Redirects = append(cmd.Redirects, Redirect{Type: Out, Target: target})
-		case "2>":
+		case TokenRedirectOutError:
 			cmd.Redirects = append(cmd.Redirects, Redirect{Type: OutErr, Target: target})
-		case ">>", "1>>":
+		case TokenRedirectAppend:
 			cmd.Redirects = append(cmd.Redirects, Redirect{Type: Append, Target: target})
-		case "2>>":
+		case TokenRedirectAppendError:
 			cmd.Redirects = append(cmd.Redirects, Redirect{Type: AppendErr, Target: target})
-		case "<", "0<":
+		case TokenRedirectIn:
 			cmd.Redirects = append(cmd.Redirects, Redirect{Type: In, Target: target})
 		}
 	}
@@ -95,26 +84,28 @@ func parseSimpleCommand(tokens []Token, i *int) (Command, error) {
 	return cmd, nil
 }
 
-func ParsePipeline(tokens []Token) (*Pipeline, error) {
-	i := 0
-	var commands []Command
-
-	for {
-		cmd, err := parseSimpleCommand(tokens, &i)
-		if err != nil {
-			return nil, err
-		}
-		commands = append(commands, cmd)
-
-		if i >= len(tokens) || tokens[i].Type == TokenEOF {
-			break
-		}
-		if tokens[i].Value == "|" {
-			i++ // consume pipe, next loop parses next command
-			continue
-		}
-		return nil, errors.New("unexpected token")
+func (p *Parser) peek() Token {
+	if p.pos >= len(p.tokens) {
+		return Token{Type: TokenEOF}
 	}
+	return p.tokens[p.pos]
+}
 
-	return &Pipeline{Commands: commands}, nil
+func (p *Parser) advance() Token {
+	token := p.peek()
+	p.pos++
+	return token
+}
+
+func (p *Parser) atEOF() bool {
+	return p.peek().Type == TokenEOF
+}
+
+func isRedirect(token Token) bool {
+	switch token.Type {
+	case TokenRedirectOut, TokenRedirectOutError, TokenRedirectAppend, TokenRedirectAppendError, TokenRedirectIn:
+		return true
+	default:
+		return false
+	}
 }
