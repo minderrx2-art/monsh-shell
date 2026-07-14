@@ -26,6 +26,21 @@ func (c *ShellCompleter) Do(line []rune, pos int) (newLine [][]rune, length int)
 	return newLine, offset
 }
 
+func listExecutables(prefix string) []string {
+	list := []string{}
+	matches, err := path.FindAll(prefix)
+	if err != nil {
+		return []string{}
+	}
+	if len(matches) == 0 {
+		return []string{}
+	}
+	for _, match := range matches {
+		list = append(list, match)
+	}
+	return list
+}
+
 func newReader() (*readline.Instance, error) {
 	l, err := readline.NewEx(&readline.Config{
 		Prompt:          "$ ",
@@ -39,6 +54,7 @@ func newReader() (*readline.Instance, error) {
 				readline.PcItem("cd"),
 				readline.PcItem("type"),
 				readline.PcItem("echo"),
+				readline.PcItemDynamic(listExecutables),
 			),
 		},
 	})
