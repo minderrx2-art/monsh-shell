@@ -3,6 +3,7 @@ package shell
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/chzyer/readline"
@@ -13,17 +14,22 @@ import (
 )
 
 type ShellCompleter struct {
-	base readline.PrefixCompleter
+	base       readline.PrefixCompleter
+	lastPrefix string
+	tabPressed bool
 }
 
 func (c *ShellCompleter) Do(line []rune, pos int) (newLine [][]rune, length int) {
-	newLine, offset := c.base.Do(line, pos)
-
-	if len(newLine) == 0 {
+	matches, offset := c.base.Do(line, pos)
+	if len(matches) == 0 {
 		fmt.Print("\x07")
+	} else if len(matches) > 1 && !c.tabPressed {
+		fmt.Print("\x07")
+		c.tabPressed = true
+		return nil, 0
 	}
-
-	return newLine, offset
+	c.tabPressed = false
+	return matches, offset
 }
 
 func listExecutables(prefix string) []string {
@@ -38,6 +44,7 @@ func listExecutables(prefix string) []string {
 	for _, match := range matches {
 		list = append(list, match)
 	}
+	slices.Sort(list)
 	return list
 }
 
