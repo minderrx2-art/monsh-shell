@@ -20,10 +20,25 @@ type ShellCompleter struct {
 }
 
 func (c *ShellCompleter) Do(line []rune, pos int) (newLine [][]rune, length int) {
+	prefix := string(line[:pos])
 	matches, offset := c.base.Do(line, pos)
+
+	if prefix != c.lastPrefix {
+		c.lastPrefix = prefix
+		c.tabPressed = false
+	}
+
 	if len(matches) == 0 {
 		fmt.Print("\x07")
-	} else if len(matches) > 1 && !c.tabPressed {
+		return nil, 0
+	}
+
+	if len(matches) == 1 {
+		c.tabPressed = false
+		return matches, offset
+	}
+
+	if !c.tabPressed {
 		fmt.Print("\x07")
 		c.tabPressed = true
 		return nil, 0
@@ -72,8 +87,8 @@ func newReader() (*readline.Instance, error) {
 }
 
 func Start() error {
+	reader, err := newReader()
 	for {
-		reader, err := newReader()
 		if err != nil {
 			return err
 		}
