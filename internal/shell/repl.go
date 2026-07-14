@@ -1,24 +1,50 @@
 package shell
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 
+	"github.com/chzyer/readline"
 	"github.com/minderrx2-art/monsh/internal/builtin"
 	"github.com/minderrx2-art/monsh/internal/parser"
 	"github.com/minderrx2-art/monsh/internal/path"
 	"github.com/minderrx2-art/monsh/internal/runner"
 )
 
+func newReader() (*readline.Instance, error) {
+	l, err := readline.NewEx(&readline.Config{
+		Prompt:          "$ ",
+		HistoryFile:     "/tmp/monsh.tmp",
+		InterruptPrompt: "^C",
+		EOFPrompt:       "exit",
+		AutoComplete: readline.NewPrefixCompleter(
+			readline.PcItem("exit"),
+			readline.PcItem("pwd"),
+			readline.PcItem("cd"),
+			readline.PcItem("type"),
+			readline.PcItem("echo"),
+		),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return l, nil
+}
+
 func Start() error {
 	for {
-		fmt.Print("$ ")
-		reader := bufio.NewReader(os.Stdin)
-		line, _ := reader.ReadString('\n')
+		reader, err := newReader()
+		if err != nil {
+			return err
+		}
 
+		defer reader.Close()
+
+		line, err := reader.Readline()
+		if err != nil {
+			return err
+		}
 		tokens := parser.Tokenize(strings.TrimSpace(line))
 
 		cmdPipeline, err := parser.Parse(tokens)
@@ -47,7 +73,7 @@ func Start() error {
 			}
 		} else {
 			if err := runner.ExecutePipeline(cmdPipeline); err != nil {
-				fmt.Println(err)
+				// oops, something went wrong but its probably ok
 			}
 		}
 	}
