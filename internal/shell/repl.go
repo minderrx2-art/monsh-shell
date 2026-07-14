@@ -12,19 +12,35 @@ import (
 	"github.com/minderrx2-art/monsh/internal/runner"
 )
 
+type ShellCompleter struct {
+	base readline.PrefixCompleter
+}
+
+func (c *ShellCompleter) Do(line []rune, pos int) (newLine [][]rune, length int) {
+	newLine, offset := c.base.Do(line, pos)
+
+	if len(newLine) == 0 {
+		fmt.Print("\x07")
+	}
+
+	return newLine, offset
+}
+
 func newReader() (*readline.Instance, error) {
 	l, err := readline.NewEx(&readline.Config{
 		Prompt:          "$ ",
 		HistoryFile:     "/tmp/monsh.tmp",
 		InterruptPrompt: "^C",
 		EOFPrompt:       "exit",
-		AutoComplete: readline.NewPrefixCompleter(
-			readline.PcItem("exit"),
-			readline.PcItem("pwd"),
-			readline.PcItem("cd"),
-			readline.PcItem("type"),
-			readline.PcItem("echo"),
-		),
+		AutoComplete: &ShellCompleter{
+			base: *readline.NewPrefixCompleter(
+				readline.PcItem("exit"),
+				readline.PcItem("pwd"),
+				readline.PcItem("cd"),
+				readline.PcItem("type"),
+				readline.PcItem("echo"),
+			),
+		},
 	})
 	if err != nil {
 		return nil, err
