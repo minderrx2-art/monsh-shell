@@ -3,6 +3,7 @@ package shell
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 
@@ -20,22 +21,28 @@ type ShellCompleter struct {
 }
 
 func (c *ShellCompleter) Do(line []rune, pos int) (newLine [][]rune, length int) {
-	prefix := string(line[:pos])
-	matches, offset := c.base.Do(line, pos)
+	prefix := strings.TrimSpace(string(line[:pos]))
+	rawMatches, offset := c.base.Do(line, pos)
+	matches := make(map[string]struct{})
+
+	for _, match := range rawMatches {
+		matches[string(match)] = struct{}{}
+	}
+	uniqueMatches := slices.Sorted(maps.Keys(matches))
 
 	if prefix != c.lastPrefix {
 		c.lastPrefix = prefix
 		c.tabPressed = false
 	}
 
-	if len(matches) == 0 {
+	if len(uniqueMatches) == 0 {
 		fmt.Print("\x07")
 		return nil, 0
 	}
 
-	if len(matches) == 1 {
+	if len(uniqueMatches) == 1 {
 		c.tabPressed = false
-		return matches, offset
+		return rawMatches, offset
 	}
 
 	if !c.tabPressed {
@@ -45,10 +52,11 @@ func (c *ShellCompleter) Do(line []rune, pos int) (newLine [][]rune, length int)
 	}
 
 	var str = []string{}
-	for _, match := range matches {
-		str = append(str, prefix+string(match))
+
+	for _, um := range uniqueMatches {
+		str = append(str, prefix+um)
 	}
-	slices.Sort(str)
+
 	fmt.Printf("\n%s", strings.Join(str, ""))
 	fmt.Printf("\n$ %s", prefix)
 
@@ -68,7 +76,6 @@ func listExecutables(prefix string) []string {
 	for _, match := range matches {
 		list = append(list, match)
 	}
-	slices.Sort(list)
 	return list
 }
 
