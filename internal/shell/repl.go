@@ -46,6 +46,8 @@ func (c *ShellCompleter) Do(line []rune, pos int) (newLine [][]rune, length int)
 	}
 
 	names := make([]string, 0, len(uniqueMatches))
+
+	// Mutli stage completions
 	for _, suffix := range uniqueMatches {
 		names = append(names, prefix+strings.TrimSpace(suffix))
 	}
