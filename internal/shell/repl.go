@@ -43,8 +43,17 @@ func (c *ShellCompleter) Do(line []rune, pos int) (newLine [][]rune, length int)
 		c.tabPressed = true
 		return nil, 0
 	}
+
+	var str = []string{}
+	for _, match := range matches {
+		str = append(str, prefix+string(match))
+	}
+	slices.Sort(str)
+	fmt.Printf("\n%s", strings.Join(str, ""))
+	fmt.Printf("\n$ %s", prefix)
+
 	c.tabPressed = false
-	return matches, offset
+	return nil, 0
 }
 
 func listExecutables(prefix string) []string {
