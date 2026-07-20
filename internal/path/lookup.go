@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path"
+	"slices"
 	"strings"
 )
 
-func scan(prefix string) []string {
+func scanPath() []string {
 	PATH := os.Getenv("PATH")
 	paths := strings.Split(PATH, ":")
 	matches := []string{}
@@ -26,23 +28,52 @@ func scan(prefix string) []string {
 				continue
 			}
 			if info.Mode().Perm()&0111 != 0 {
-				if strings.HasPrefix(file.Name(), prefix) {
-					matches = append(matches, file.Name())
-				}
+				matches = append(matches, file.Name())
 			}
 		}
 	}
 	return matches
 }
 
-func Find(binary string) (bool, string, error) {
-	path, err := exec.LookPath(binary)
+func scanPwd() ([]string, error) {
+	matches, err := os.ReadDir(path.Join(os.Getenv("PWD")))
 	if err != nil {
-		return false, "", fmt.Errorf("Not found")
+		return []string{}, err
 	}
-	return true, path, nil
+	list := []string{}
+	for _, match := range matches {
+		list = append(list, match.Name())
+	}
+	return list, nil
 }
 
-func FindAll(prefix string) ([]string, error) {
-	return scan(prefix), nil
+func FindExecutable(binary string) (string, error) {
+	path, err := exec.LookPath(binary)
+	if err != nil {
+		return "", fmt.Errorf("Executable not found")
+	}
+	return path, nil
+}
+
+func ListExecutables(prefix string) []string {
+	executables := scanPath()
+	matches := slices.DeleteFunc(executables, func(executable string) bool {
+		return !strings.HasPrefix(executable, prefix)
+	})
+
+	if len(matches) == 0 {
+		return []string{}
+	}
+	return matches
+}
+
+func ListFiles(prefix string) []string {
+	files, err := scanPwd()
+	if err != nil {
+		return []string{}
+	}
+	matches := slices.DeleteFunc(files, func(file string) bool {
+		return !strings.HasPrefix(file, prefix)
+	})
+	return matches
 }
