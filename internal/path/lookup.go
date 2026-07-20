@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path"
 	"slices"
 	"strings"
 )
@@ -35,8 +34,12 @@ func scanPath() []string {
 	return matches
 }
 
-func scanPwd() ([]string, error) {
-	matches, err := os.ReadDir(path.Join(os.Getenv("PWD")))
+func scanWd() ([]string, error) {
+	currentDir, err := os.Getwd()
+	if err != nil {
+		return []string{}, err
+	}
+	matches, err := os.ReadDir(currentDir)
 	if err != nil {
 		return []string{}, err
 	}
@@ -68,12 +71,15 @@ func ListExecutables(prefix string) []string {
 }
 
 func ListFiles(prefix string) []string {
-	files, err := scanPwd()
+	var splitPrefix string = strings.Split(prefix, " ")[1]
+	files, err := scanWd()
+	fmt.Println("files", files)
 	if err != nil {
 		return []string{}
 	}
 	matches := slices.DeleteFunc(files, func(file string) bool {
-		return !strings.HasPrefix(file, prefix)
+		return !strings.HasPrefix(file, splitPrefix)
 	})
+	fmt.Println("matches", matches)
 	return matches
 }
