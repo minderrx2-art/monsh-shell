@@ -8,12 +8,17 @@ import (
 	"strings"
 )
 
+var shellBuiltins = map[string]struct{}{
+	"cd": {}, "echo": {}, "exit": {}, "pwd": {}, "type": {},
+}
+
 func scanPath() []string {
 	PATH := os.Getenv("PATH")
 	paths := strings.Split(PATH, ":")
+	seen := make(map[string]struct{})
 	matches := []string{}
-	for _, path := range paths {
-		files, err := os.ReadDir(path)
+	for _, dir := range paths {
+		files, err := os.ReadDir(dir)
 		if err != nil {
 			continue
 		}
@@ -27,7 +32,15 @@ func scanPath() []string {
 				continue
 			}
 			if info.Mode().Perm()&0111 != 0 {
-				matches = append(matches, file.Name())
+				name := file.Name()
+				if _, ok := shellBuiltins[name]; ok {
+					continue
+				}
+				if _, ok := seen[name]; ok {
+					continue
+				}
+				seen[name] = struct{}{}
+				matches = append(matches, name)
 			}
 		}
 	}
@@ -58,28 +71,69 @@ func FindExecutable(binary string) (string, error) {
 	return path, nil
 }
 
-func ListExecutables(prefix string) []string {
-	executables := scanPath()
-	matches := slices.DeleteFunc(executables, func(executable string) bool {
-		return !strings.HasPrefix(executable, prefix)
-	})
+func firstWord(line string) string {
+	line = strings.TrimLeft(line, " \t")
+	if line == "" {
+		return ""
+	}
+	if i := strings.IndexAny(line, " \t"); i >= 0 {
+		return line[:i]
+	}
+	return line
+}
 
+func wordBeingCompleted(line string) string {
+	if i := strings.LastIndex(line, " "); i >= 0 {
+		return line[i+1:]
+	}
+	return ""
+}
+
+func completingArgs(line string) bool {
+	return strings.Contains(strings.TrimLeft(line, " \t"), " ")
+}
+
+func ListExecutables(line string) []string {
+	word := firstWord(line)
+	if word == "" {
+		return nil
+	}
+
+	if completingArgs(line) {
+		if _, builtin := shellBuiltins[word]; builtin {
+			return nil
+		}
+		if _, err := exec.LookPath(word); err == nil {
+			return []string{word}
+		}
+		return nil
+	}
+
+	if _, builtin := shellBuiltins[word]; builtin {
+		return nil
+	}
+
+	matches := slices.DeleteFunc(scanPath(), func(executable string) bool {
+		return !strings.HasPrefix(executable, word)
+	})
 	if len(matches) == 0 {
-		return []string{}
+		return nil
 	}
 	return matches
 }
 
-func ListFiles(prefix string) []string {
-	var splitPrefix string = strings.Split(prefix, " ")[1]
+func ListFiles(line string) []string {
+	if !completingArgs(line) {
+		return nil
+	}
+
+	word := wordBeingCompleted(line)
 	files, err := scanWd()
-	fmt.Println("files", files)
 	if err != nil {
-		return []string{}
+		return nil
 	}
 	matches := slices.DeleteFunc(files, func(file string) bool {
-		return !strings.HasPrefix(file, splitPrefix)
+		return !strings.HasPrefix(file, word)
 	})
-	fmt.Println("matches", matches)
 	return matches
 }

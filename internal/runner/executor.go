@@ -1,128 +1,112 @@
 package runner
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 
 	"github.com/minderrx2-art/monsh/internal/parser"
+	"github.com/minderrx2-art/monsh/internal/path"
 )
 
-func Execute(path string, args ...string) error {
-	cmd := exec.Command(path, args...)
+func Execute(execPath string, args ...string) error {
+	cmd := exec.Command(execPath, args...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
+			return nil
+		}
 		return err
 	}
 	return nil
 }
 
-// &{[{echo [damn son] [{1 test.txt}]}]}
 func ExecutePipeline(pipeline *parser.Pipeline) error {
 	for _, command := range pipeline.Commands {
+		if _, err := path.FindExecutable(command.Name); err != nil {
+			return fmt.Errorf("%s: command not found", command.Name)
+		}
+
 		cmd := exec.Command(command.Name, command.Args...)
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 
+		var files []*os.File
+		var err error
 		for _, redirect := range command.Redirects {
+			var file *os.File
 			switch redirect.Type {
-			case parser.In: // <
-				if err := redirectIn(cmd, redirect.Target); err != nil {
-					return err
+			case parser.In:
+				file, err = openInput(redirect.Target)
+				if err == nil {
+					cmd.Stdin = file
 				}
-			case parser.Out: // >
-				if err := redirectOut(cmd, redirect.Target); err != nil {
-					return err
+			case parser.Out:
+				file, err = createOutput(redirect.Target)
+				if err == nil {
+					cmd.Stdout = file
 				}
 			case parser.OutErr:
-				if err := redirectOutErr(cmd, redirect.Target); err != nil {
-					return err
+				file, err = createOutput(redirect.Target)
+				if err == nil {
+					cmd.Stderr = file
 				}
 			case parser.Append:
-				if err := redirectAppend(cmd, redirect.Target); err != nil {
-					return err
+				file, err = openAppend(redirect.Target)
+				if err == nil {
+					cmd.Stdout = file
 				}
 			case parser.AppendErr:
-				if err := redirectAppendErr(cmd, redirect.Target); err != nil {
-					return err
+				file, err = openAppend(redirect.Target)
+				if err == nil {
+					cmd.Stderr = file
 				}
 			}
+			if err != nil {
+				for _, f := range files {
+					f.Close()
+				}
+				return err
+			}
+			if file != nil {
+				files = append(files, file)
+			}
+		}
+
+		if err := cmd.Run(); err != nil {
+			for _, f := range files {
+				f.Close()
+			}
+			var exitErr *exec.ExitError
+			if errors.As(err, &exitErr) {
+				continue
+			}
+			return err
+		}
+		for _, f := range files {
+			f.Close()
 		}
 	}
 	return nil
 }
 
-func redirectIn(cmd *exec.Cmd, target string) error {
+func openInput(target string) (*os.File, error) {
 	file, err := os.Open(target)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	defer file.Close()
-	cmd.Stdin = file
-	if err := cmd.Run(); err != nil {
-		return err
-	}
-	return nil
+	return file, nil
 }
 
-func redirectOut(cmd *exec.Cmd, target string) error {
-	file, err := os.Create(target)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-	cmd.Stdout = file
-	if err := cmd.Run(); err != nil {
-		return err
-	}
-	return nil
+func createOutput(target string) (*os.File, error) {
+	return os.Create(target)
 }
 
-func redirectOutErr(cmd *exec.Cmd, target string) error {
-	file, err := os.Create(target)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-	cmd.Stderr = file
-	if err := cmd.Run(); err != nil {
-		return err
-	}
-	return nil
-}
-
-func redirectAppend(cmd *exec.Cmd, target string) error {
-	file, err := os.OpenFile(
-		target,
-		os.O_CREATE|os.O_WRONLY|os.O_APPEND,
-		0644,
-	)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-	cmd.Stdout = file
-	if err := cmd.Run(); err != nil {
-		return err
-	}
-	return nil
-}
-
-func redirectAppendErr(cmd *exec.Cmd, target string) error {
-	file, err := os.OpenFile(
-		target,
-		os.O_CREATE|os.O_WRONLY|os.O_APPEND,
-		0644,
-	)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-	cmd.Stderr = file
-	if err := cmd.Run(); err != nil {
-		return err
-	}
-	return nil
+func openAppend(target string) (*os.File, error) {
+	return os.OpenFile(target, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 }

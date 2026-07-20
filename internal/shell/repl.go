@@ -3,6 +3,7 @@ package shell
 import (
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/chzyer/readline"
@@ -23,11 +24,12 @@ func newReader() (*readline.Instance, error) {
 			ReadlineCompleter: *readline.NewPrefixCompleter(
 				readline.PcItem("exit"),
 				readline.PcItem("pwd"),
-				readline.PcItem("cd"),
+				readline.PcItem("cd", readline.PcItemDynamic(path.ListFiles)),
 				readline.PcItem("type"),
 				readline.PcItem("echo"),
-				readline.PcItemDynamic(path.ListFiles),
-				readline.PcItemDynamic(path.ListExecutables),
+				readline.PcItemDynamic(path.ListExecutables,
+					readline.PcItemDynamic(path.ListFiles),
+				),
 			),
 		},
 	})
@@ -39,21 +41,28 @@ func newReader() (*readline.Instance, error) {
 
 func Start() error {
 	reader, err := newReader()
+	if err != nil {
+		return err
+	}
+	defer reader.Close()
+
 	for {
-		if err != nil {
-			return err
-		}
-
-		defer reader.Close()
-
 		line, err := reader.Readline()
+		if err == readline.ErrInterrupt {
+			if len(line) == 0 {
+				break
+			}
+			continue
+		}
+		if err == io.EOF {
+			break
+		}
 		if err != nil {
 			return err
 		}
+
 		tokens := parser.Tokenize(strings.TrimSpace(line))
-
 		cmdPipeline, err := parser.Parse(tokens)
-
 		if err != nil {
 			if !errors.Is(err, parser.ErrEmptyInput) {
 				fmt.Println(err)
@@ -65,23 +74,23 @@ func Start() error {
 			cmd := cmdPipeline.Commands[0]
 			builtinFunc := builtinRouter(cmd.Name, cmd.Args)
 
-			// Check for builtins
 			if builtinFunc != nil {
 				builtinFunc()
 				continue
 			}
 
-			if path, err := path.FindExecutable(cmd.Name); err == nil {
-				runner.Execute(path, cmd.Args...)
+			if _, err := path.FindExecutable(cmd.Name); err == nil {
+				runner.Execute(cmd.Name, cmd.Args...)
 			} else {
 				fmt.Printf("%s: command not found\n", cmd.Name)
 			}
 		} else {
 			if err := runner.ExecutePipeline(cmdPipeline); err != nil {
-				// oops, something went wrong but its probably ok
+				fmt.Println(err)
 			}
 		}
 	}
+	return nil
 }
 
 func builtinRouter(command string, rest []string) func() {

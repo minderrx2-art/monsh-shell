@@ -16,7 +16,7 @@ type ShellCompleter struct {
 }
 
 func (c *ShellCompleter) Do(line []rune, pos int) (newLine [][]rune, length int) {
-	prefix := strings.TrimSpace(string(line[:pos]))
+	typed := string(line[:pos])
 	rawMatches, offset := c.ReadlineCompleter.Do(line, pos)
 	matches := make(map[string]struct{})
 
@@ -25,8 +25,8 @@ func (c *ShellCompleter) Do(line []rune, pos int) (newLine [][]rune, length int)
 	}
 	uniqueMatches := slices.Sorted(maps.Keys(matches))
 
-	if prefix != c.lastPrefix {
-		c.lastPrefix = prefix
+	if typed != c.lastPrefix {
+		c.lastPrefix = typed
 		c.tabPressed = false
 	}
 
@@ -40,19 +40,22 @@ func (c *ShellCompleter) Do(line []rune, pos int) (newLine [][]rune, length int)
 		return [][]rune{[]rune(uniqueMatches[0])}, offset
 	}
 
-	names := make([]string, 0, len(uniqueMatches))
+	base := typed
+	if offset >= 0 && offset <= len(typed) {
+		base = typed[:offset]
+	}
 
-	// Mutli stage completions
+	names := make([]string, 0, len(uniqueMatches))
 	for _, suffix := range uniqueMatches {
-		names = append(names, prefix+strings.TrimSpace(suffix))
+		names = append(names, base+strings.TrimSpace(suffix))
 	}
 	slices.Sort(names)
 
 	lcp := longestCommonPrefix(names)
 
-	if len(lcp) > len(prefix) {
+	if len(lcp) > len(typed) {
 		c.tabPressed = false
-		return [][]rune{[]rune(lcp[len(prefix):])}, offset
+		return [][]rune{[]rune(lcp[len(typed):])}, offset
 	}
 
 	if !c.tabPressed {
@@ -62,7 +65,7 @@ func (c *ShellCompleter) Do(line []rune, pos int) (newLine [][]rune, length int)
 	}
 
 	fmt.Printf("\n%s\n", strings.Join(names, "  "))
-	fmt.Printf("$ %s", prefix)
+	fmt.Printf("$ %s", typed)
 	c.tabPressed = false
 	return nil, 0
 }
