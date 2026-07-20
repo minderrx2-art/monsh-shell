@@ -48,22 +48,6 @@ func scanPath() []string {
 	return matches
 }
 
-func scanWd() ([]string, error) {
-	currentDir, err := os.Getwd()
-	if err != nil {
-		return []string{}, err
-	}
-	matches, err := os.ReadDir(currentDir)
-	if err != nil {
-		return []string{}, err
-	}
-	list := []string{}
-	for _, match := range matches {
-		list = append(list, match.Name())
-	}
-	return list, nil
-}
-
 func FindExecutable(binary string) (string, error) {
 	path, err := exec.LookPath(binary)
 	if err != nil {
