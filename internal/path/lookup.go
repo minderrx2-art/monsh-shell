@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"slices"
 	"strings"
 )
@@ -128,12 +129,33 @@ func ListFiles(line string) []string {
 	}
 
 	word := wordBeingCompleted(line)
-	files, err := scanWd()
+
+	dir := "."
+	prefix := word
+
+	if i := strings.LastIndex(word, "/"); i >= 0 {
+		dir = word[:i+1]
+		prefix = word[i+1:]
+	}
+
+	cwd, err := os.Getwd()
 	if err != nil {
 		return nil
 	}
-	matches := slices.DeleteFunc(files, func(file string) bool {
-		return !strings.HasPrefix(file, word)
-	})
-	return matches
+	files, err := os.ReadDir(filepath.Join(cwd, dir))
+	if err != nil {
+		return nil
+	}
+
+	names := make([]string, 0, len(files))
+	for _, file := range files {
+		if strings.HasPrefix(file.Name(), prefix) {
+			name := file.Name()
+			if dir != "." {
+				name = dir + name
+			}
+			names = append(names, name)
+		}
+	}
+	return names
 }
