@@ -134,17 +134,16 @@ func ListFiles(line string) []string {
 
 	names := make([]string, 0, len(files))
 	for _, file := range files {
-		if file.IsDir() && strings.HasPrefix(file.Name(), prefix) {
-			name := file.Name()
-			if dir != "." {
-				name = dir + name
-			}
+		if !strings.HasPrefix(file.Name(), prefix) {
+			continue
+		}
+		name := file.Name()
+		if dir != "." {
+			name = dir + name
+		}
+		if file.IsDir() {
 			names = append(names, name+"/")
-		} else if !file.IsDir() {
-			name := file.Name()
-			if dir != "." {
-				name = dir + name
-			}
+		} else {
 			names = append(names, name)
 		}
 	}
