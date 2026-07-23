@@ -5,6 +5,7 @@ import (
 )
 
 func Complete(args []string) {
+	println(args)
 	switch args[0] {
 	case "-p":
 		fmt.Printf("complete: %s: no completion specification", args[1])
