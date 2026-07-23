@@ -5,5 +5,8 @@ import (
 )
 
 func Complete(args []string) {
-	fmt.Printf("%s\n", "complete: git: no completion specification")
+	switch args[0] {
+	case "-p":
+		fmt.Printf("complete: %s: no completion specification", args[1])
+	}
 }
