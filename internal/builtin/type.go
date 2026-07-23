@@ -13,6 +13,7 @@ var builtin = []string{
 	"echo",
 	"type",
 	"pwd",
+	"complete",
 }
 
 func Type(second_command string) {

@@ -26,6 +26,7 @@ func newReader() (*readline.Instance, error) {
 				readline.PcItem("pwd"),
 				readline.PcItem("cd", readline.PcItemDynamic(path.ListFiles)),
 				readline.PcItem("type"),
+				readline.PcItem("complete"),
 				readline.PcItem("echo"),
 				readline.PcItemDynamic(path.ListExecutables,
 					readline.PcItemDynamic(path.ListFiles),
