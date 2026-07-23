@@ -111,6 +111,10 @@ func builtinRouter(command string, rest []string) func() {
 				fmt.Println(err)
 			}
 		}
+	case "complete":
+		return func() {
+			builtin.Complete(rest)
+		}
 	default:
 		return nil
 	}
