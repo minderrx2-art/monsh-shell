@@ -24,7 +24,6 @@ func (c *ShellCompleter) Do(line []rune, pos int) (newLine [][]rune, length int)
 		matches[string(match)] = struct{}{}
 	}
 	uniqueMatches := slices.Sorted(maps.Keys(matches))
-
 	if typed != c.lastPrefix {
 		c.lastPrefix = typed
 		c.tabPressed = false
@@ -37,7 +36,11 @@ func (c *ShellCompleter) Do(line []rune, pos int) (newLine [][]rune, length int)
 
 	if len(uniqueMatches) == 1 {
 		c.tabPressed = false
-		return [][]rune{[]rune(uniqueMatches[0])}, offset
+		m := uniqueMatches[0]
+		if strings.HasSuffix(m, "/ ") {
+			m = strings.TrimSuffix(m, " ")
+		}
+		return [][]rune{[]rune(m)}, offset
 	}
 
 	base := typed
@@ -57,7 +60,6 @@ func (c *ShellCompleter) Do(line []rune, pos int) (newLine [][]rune, length int)
 		c.tabPressed = false
 		return [][]rune{[]rune(lcp[len(typed):])}, offset
 	}
-
 	if !c.tabPressed {
 		fmt.Print("\x07")
 		c.tabPressed = true

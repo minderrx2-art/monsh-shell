@@ -67,6 +67,7 @@ func firstWord(line string) string {
 	return line
 }
 
+// "ls bee" -> returns "bee"
 func wordBeingCompleted(line string) string {
 	if i := strings.LastIndex(line, " "); i >= 0 {
 		return line[i+1:]
@@ -83,7 +84,6 @@ func ListExecutables(line string) []string {
 	if word == "" {
 		return nil
 	}
-
 	if completingArgs(line) {
 		if _, builtin := shellBuiltins[word]; builtin {
 			return nil
@@ -117,6 +117,7 @@ func ListFiles(line string) []string {
 	dir := "."
 	prefix := word
 
+	// "bee" -> dir = "", prefix = ""
 	if i := strings.LastIndex(word, "/"); i >= 0 {
 		dir = word[:i+1]
 		prefix = word[i+1:]
@@ -133,7 +134,13 @@ func ListFiles(line string) []string {
 
 	names := make([]string, 0, len(files))
 	for _, file := range files {
-		if strings.HasPrefix(file.Name(), prefix) {
+		if file.IsDir() && strings.HasPrefix(file.Name(), prefix) {
+			name := file.Name()
+			if dir != "." {
+				name = dir + name
+			}
+			names = append(names, name+"/")
+		} else if !file.IsDir() {
 			name := file.Name()
 			if dir != "." {
 				name = dir + name
