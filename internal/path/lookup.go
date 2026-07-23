@@ -107,17 +107,27 @@ func ListExecutables(line string) []string {
 	return matches
 }
 
+func argPrefixBeforeLastWord(line string) string {
+	trimmed := strings.TrimLeft(line, " \t")
+	cmd := firstWord(trimmed)
+	rest := strings.TrimLeft(trimmed[len(cmd):], " \t")
+	if i := strings.LastIndex(rest, " "); i >= 0 {
+		return rest[:i+1]
+	}
+	return ""
+}
+
 func ListFiles(line string) []string {
 	if !completingArgs(line) {
 		return nil
 	}
 
 	word := wordBeingCompleted(line)
+	argPrefix := argPrefixBeforeLastWord(line)
 
 	dir := "."
 	prefix := word
 
-	// "bee" -> dir = "", prefix = ""
 	if i := strings.LastIndex(word, "/"); i >= 0 {
 		dir = word[:i+1]
 		prefix = word[i+1:]
@@ -142,10 +152,9 @@ func ListFiles(line string) []string {
 			name = dir + name
 		}
 		if file.IsDir() {
-			names = append(names, name+"/")
-		} else {
-			names = append(names, name)
+			name += "/"
 		}
+		names = append(names, argPrefix+name)
 	}
 	return names
 }
