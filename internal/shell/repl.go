@@ -40,7 +40,14 @@ func newReader() (*readline.Instance, error) {
 	return l, nil
 }
 
+type builtins struct {
+	c *builtin.CompleteCommand
+}
+
 func Start() error {
+	builtins := &builtins{
+		c: builtin.NewCompleteCommand(),
+	}
 	reader, err := newReader()
 	if err != nil {
 		return err
@@ -73,7 +80,7 @@ func Start() error {
 
 		if len(cmdPipeline.Commands) == 1 && cmdPipeline.Commands[0].Redirects == nil {
 			cmd := cmdPipeline.Commands[0]
-			builtinFunc := builtinRouter(cmd.Name, cmd.Args)
+			builtinFunc := builtinRouter(cmd.Name, cmd.Args, builtins)
 
 			if builtinFunc != nil {
 				builtinFunc()
@@ -94,7 +101,7 @@ func Start() error {
 	return nil
 }
 
-func builtinRouter(command string, rest []string) func() {
+func builtinRouter(command string, rest []string, builtins *builtins) func() {
 	switch command {
 	case "type":
 		return func() { builtin.Type(rest[0]) }
@@ -113,7 +120,7 @@ func builtinRouter(command string, rest []string) func() {
 		}
 	case "complete":
 		return func() {
-			builtin.Complete(rest)
+			builtins.c.Complete(rest)
 		}
 	default:
 		return nil
